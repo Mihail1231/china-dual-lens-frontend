@@ -1,7 +1,17 @@
 $port = 8080
-$root = "C:\Users\emihi\.gemini\antigravity\scratch\china-dual-lens"
+$root = $PSScriptRoot
 $difyUrl = "https://api.dify.ai/v1/workflows/run"
-$difyApiKey = "app-p3VK8BUCxYCOPb7eMcEIm0HU"
+$difyApiKey = $env:DIFY_API_KEY
+
+# Load from .env.local if present
+$envFile = Join-Path $root ".env.local"
+if ((-not $difyApiKey) -and (Test-Path $envFile)) {
+  Get-Content $envFile | ForEach-Object {
+    if ($_ -match "^DIFY_API_KEY=(.+)$") {
+      $difyApiKey = $Matches[1].Trim()
+    }
+  }
+}
 
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$port/")
@@ -54,7 +64,7 @@ while ($listener.IsListening) {
       $response.ContentLength64 = $bytes.Length
       $response.OutputStream.Write($bytes, 0, $bytes.Length)
     } catch {
-      $errJson = @{ error = "Local Proxy Error: $($_.Exception.Message)" } | ConvertTo-Json
+      $errJson = '{"error":"Local proxy error: ' + ($_.Exception.Message -replace '"', '\"') + '"}'
       $bytes = [System.Text.Encoding]::UTF8.GetBytes($errJson)
       $response.StatusCode = 502
       $response.ContentType = "application/json; charset=utf-8"
@@ -65,9 +75,11 @@ while ($listener.IsListening) {
     continue
   }
 
-  if ([string]::IsNullOrEmpty($relPath)) { $relPath = "index.html" }
-  $filePath = Join-Path $root $relPath
+  if ([string]::IsNullOrEmpty($relPath)) {
+    $relPath = "index.html"
+  }
 
+  $filePath = Join-Path $root $relPath
   if (Test-Path $filePath -PathType Leaf) {
     $ext = [System.IO.Path]::GetExtension($filePath).ToLower()
     $response.ContentType = if ($mimeTypes.ContainsKey($ext)) { $mimeTypes[$ext] } else { "application/octet-stream" }

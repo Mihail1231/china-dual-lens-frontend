@@ -1,19 +1,18 @@
 # push-to-github.ps1
-# Automatically installs Git if not present, stages all files, sets remote origin,
-# commits with 'Fix Vercel api route structure', and pushes to main.
+# End-to-end Git setup & push script for China Dual-Lens Frontend
 
 $ErrorActionPreference = "Stop"
 Set-Location "C:\Users\emihi\.gemini\antigravity\scratch\china-dual-lens"
 
 # 1. Ensure git is in PATH or install via winget
-$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     Write-Host "Git is not installed. Installing Git via winget..." -ForegroundColor Cyan
     winget install --id Git.Git -e --source winget --accept-package-agreements --accept-source-agreements
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") + ";C:\Program Files\Git\cmd"
 }
 
-# 2. Initialize repository if needed
+# 2. Initialize repository & set branch to main
 if (-not (Test-Path ".git")) {
     git init -b main
 } else {
@@ -31,6 +30,6 @@ if ($existingRemotes -contains "origin") {
 
 # 4. Stage all files, commit, and push to main
 git add .
-git commit -m "Fix Vercel api route structure"
+git commit -m "Complete frontend setup with verified Vercel proxy, fallback data, and theme"
 git push -u origin main --force
 Write-Host "Successfully pushed to $remoteUrl (main)!" -ForegroundColor Green

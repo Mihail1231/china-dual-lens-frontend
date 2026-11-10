@@ -2,12 +2,11 @@
  * Vercel Serverless Function: api/route.js
  * Endpoint: POST /api/route
  *
- * Proxies frontend requests to the Dify Workflow API:
+ * Reads process.env.DIFY_API_KEY on the server and forwards requests to:
  *   POST https://api.dify.ai/v1/workflows/run
- * Prevents browser CORS errors and keeps DIFY_API_KEY on the server.
+ * Prevents browser CORS issues and keeps the Dify API key off the client.
  */
 module.exports = async function handler(req, res) {
-  // Set CORS headers for web and mobile clients
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -20,11 +19,16 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method Not Allowed. Use POST." });
   }
 
-  const apiKey = process.env.DIFY_API_KEY || "app-KrhhWYsQx8gunaqa81Mtb2aj";
+  const apiKey = process.env.DIFY_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({
+      error: "Server configuration error: DIFY_API_KEY environment variable is not set on Vercel.",
+    });
+  }
+
   const rawUrl = (process.env.DIFY_API_URL || "https://api.dify.ai/v1/workflows/run")
     .trim()
     .replace(/\/+$/, "");
-  // Ensure the URL ends with /workflows/run even if DIFY_API_URL was set to https://api.dify.ai/v1
   const difyUrl = rawUrl.endsWith("/workflows/run") ? rawUrl : `${rawUrl}/workflows/run`;
 
   const controller = new AbortController();

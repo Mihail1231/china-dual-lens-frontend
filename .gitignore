@@ -1,5 +1,17 @@
-# Ignore temporary inspection directory and local archives
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+.env.*
+
+# Dependencies
+node_modules/
+
+# Vercel / Netlify build artifacts
+.vercel/
+.netlify/
+
+# Temporary inspection files & local archives
 dify_inspect/
 *.zip
-.env
 .DS_Store

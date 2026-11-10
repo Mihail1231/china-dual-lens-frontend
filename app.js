@@ -1,16 +1,12 @@
 // ============================================================================
 // 1. API & SERVERLESS PROXY CONFIGURATION
-// Uses the serverless proxy `/api/route` by default when hosted on Vercel,
-// Netlify, or the local server so CORS is prevented and the API key stays hidden.
-// Falls back to direct Dify API URL if opened directly via `file:///`.
+// Points to the local serverless proxy endpoint `/api/route` (`api/route.js`)
+// so browser CORS is prevented and DIFY_API_KEY stays strictly on the server.
 // ============================================================================
-const DEFAULT_ENDPOINT =
-  window.location.protocol === "file:"
-    ? "https://api.dify.ai/v1/workflows/run"
-    : "/api/route";
+const DEFAULT_ENDPOINT = "/api/route";
 
 let API_URL = localStorage.getItem("DUALLENS_API_URL") || DEFAULT_ENDPOINT;
-let BEARER_TOKEN = localStorage.getItem("DUALLENS_BEARER_TOKEN") || "app-KrhhWYsQx8gunaqa81Mtb2aj";
+let BEARER_TOKEN = localStorage.getItem("DUALLENS_BEARER_TOKEN") || "";
 
 // 180-second timeout because real Dify runs take 60–115 seconds
 const REQUEST_TIMEOUT_MS = 180000;
@@ -895,17 +891,8 @@ async function callDifyWorkflow(formValues) {
     user: "frontend-user-id",
   };
 
-  try {
-    return await sendWorkflowFetch(API_URL, payload);
-  } catch (firstErr) {
-    // If `/api/route` returned 404/405 (e.g. static GitHub Pages without serverless function),
-    // automatically try direct Dify endpoint before triggering saved fallback
-    if (API_URL.startsWith("/") && BEARER_TOKEN && BEARER_TOKEN !== "YOUR_DIFY_BEARER_TOKEN_HERE") {
-      console.warn("Proxy endpoint unavailable on static host, trying direct Dify API...");
-      return await sendWorkflowFetch("https://api.dify.ai/v1/workflows/run", payload);
-    }
-    throw firstErr;
-  }
+  // Send request through our serverless proxy (/api/route)
+  return await sendWorkflowFetch(API_URL, payload);
 }
 
 // ============================================================================

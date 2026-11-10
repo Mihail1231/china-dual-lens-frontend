@@ -1,5 +1,6 @@
 /**
  * Netlify Serverless Function: /.netlify/functions/route (mapped to /api/route via netlify.toml)
+ * Reads process.env.DIFY_API_KEY and forwards requests to https://api.dify.ai/v1/workflows/run
  */
 exports.handler = async function (event) {
   const corsHeaders = {
@@ -21,8 +22,21 @@ exports.handler = async function (event) {
     };
   }
 
-  const apiKey = process.env.DIFY_API_KEY || "app-p3VK8BUCxYCOPb7eMcEIm0HU";
-  const difyUrl = process.env.DIFY_API_URL || "https://api.dify.ai/v1/workflows/run";
+  const apiKey = process.env.DIFY_API_KEY;
+  if (!apiKey) {
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        error: "Server configuration error: DIFY_API_KEY environment variable is not set.",
+      }),
+    };
+  }
+
+  const rawUrl = (process.env.DIFY_API_URL || "https://api.dify.ai/v1/workflows/run")
+    .trim()
+    .replace(/\/+$/, "");
+  const difyUrl = rawUrl.endsWith("/workflows/run") ? rawUrl : `${rawUrl}/workflows/run`;
 
   try {
     const response = await fetch(difyUrl, {
