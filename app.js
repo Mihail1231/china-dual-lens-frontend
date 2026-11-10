@@ -1085,6 +1085,17 @@ function loadSpecificSavedPreset(profileKey) {
 // ============================================================================
 // 12. EVENT LISTENERS
 // ============================================================================
+function summarizeApiError(rawMsg) {
+  const msg = String(rawMsg || "Unknown error");
+  if (msg.includes("Key is blocked") || msg.includes("401")) {
+    return "Upstream LLM model key in Dify is currently blocked/expired (HTTP 401)";
+  }
+  if (msg.includes("PluginInvokeError")) {
+    return "Dify model provider plugin error";
+  }
+  return msg.length > 160 ? `${msg.slice(0, 160)}...` : msg;
+}
+
 async function handleRouteGeneration() {
   applyLocationEmojiToInput(startCityInput, "start_city");
   applyLocationEmojiToInput(targetRegionInput, "target_region");
@@ -1104,10 +1115,10 @@ async function handleRouteGeneration() {
     displayParsedRoutes(parsed, false);
   } catch (err) {
     console.error("Live Dify API error, activating Project Fair fallback:", err);
-    // Automatic Project Fair safety: load saved fallback routes AND show notice
+    // Automatic Project Fair safety: load saved fallback routes AND show clean notice
     loadSavedFallbackForCurrentForm();
     errorTitleEl.textContent = "Live API Unreachable — Loaded Saved Fallback Routes";
-    errorMessageEl.textContent = `Live API returned (${err.message}). Showing verified saved routes below so your demo continues without interruption.`;
+    errorMessageEl.textContent = `${summarizeApiError(err.message)}. Showing verified saved routes below so your demo continues without interruption.`;
     errorBanner.classList.remove("hidden");
   } finally {
     setLoading(false);
