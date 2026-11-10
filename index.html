@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>China Dual-Lens | Multi-Agent Itinerary Optimizer</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Marked.js for client-side Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <!-- 1. Cinematic Full-Bleed Header Banner -->
+  <header class="hero-banner-container">
+    <img
+      src="banner.jpg"
+      alt="China Dual-Lens — 双镜中国 A Multi-Agent Itinerary Optimizer"
+    />
+  </header>
+
+  <!-- 2. Main Container Overlapping the Banner -->
+  <main class="main-container">
+    <!-- Collapsible Dify API & Proxy Configuration Drawer -->
+    <section id="apiConfigPanel" class="card card-elevated config-panel hidden" aria-label="Dify API Configuration">
+      <div class="config-header">
+        <h3>Dify API &amp; Proxy Settings</h3>
+        <span class="config-hint">
+          By default, requests use the serverless proxy (<code>/api/route</code>) to avoid CORS and keep your API key hidden. You can also override the endpoint or API key below.
+        </span>
+      </div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="apiUrlInput">API / Proxy Endpoint URL</label>
+          <input
+            type="text"
+            id="apiUrlInput"
+            placeholder="/api/route or https://api.dify.ai/v1/workflows/run"
+          />
+        </div>
+        <div class="form-group">
+          <label for="bearerTokenInput">Optional Direct Bearer Token</label>
+          <input
+            type="password"
+            id="bearerTokenInput"
+            placeholder="app-xxxxxxxxxxxxxxxxxxxxxxxx (held by proxy by default)"
+          />
+        </div>
+        <div class="form-group form-actions">
+          <button type="button" id="saveConfigBtn" class="btn-primary">Save Settings</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Input Section (Elevated Content Card) -->
+    <section class="card card-elevated form-section" aria-labelledby="form-heading">
+      <div class="section-header">
+        <h2 id="form-heading" class="section-title">
+          <span class="gold-ornament" aria-hidden="true">❖</span>
+          Plan Your China Journey
+        </h2>
+        <div class="header-actions">
+          <!-- Demo Safeties: Instant Saved Results Selector for Project Fair -->
+          <div class="fallback-selector-wrap">
+            <label for="savedDemoSelect" class="sr-only">Load Saved Preset Result</label>
+            <select id="savedDemoSelect" class="saved-demo-select" title="Instant fallback: load saved results without waiting for live API">
+              <option value="" selected>⚡ Instant Demo Results (Saved)...</option>
+              <option value="DEV-GX-01">Saved 1: Guangxi Backpacker (DEV-GX-01 • Valid)</option>
+              <option value="DEV-YN-01">Saved 2: Yunnan Culture (DEV-YN-01 • Valid)</option>
+              <option value="DEV-SC-01">Saved 3: Sichuan Food (DEV-SC-01 • Valid)</option>
+              <option value="DEV-YN-LOW">Saved 4: Low Budget Test (valid = 0 Red Banner)</option>
+            </select>
+          </div>
+          <button type="button" id="toggleConfigBtn" class="btn-outline" title="Configure Proxy / Dify API Settings">
+            ⚙️ API Settings
+          </button>
+        </div>
+      </div>
+
+      <form id="itineraryForm" class="itinerary-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="start_city">Start City</label>
+            <input
+              type="text"
+              id="start_city"
+              name="start_city"
+              list="startCityList"
+              placeholder="e.g., Shenzhen 🏙️, Shanghai 🏙️"
+              value="Shenzhen 🏙️"
+              required
+            />
+            <datalist id="startCityList">
+              <option value="Shenzhen 🏙️"></option>
+              <option value="Guangzhou 🏙️"></option>
+              <option value="Shanghai 🏙️"></option>
+              <option value="Beijing 🏮"></option>
+              <option value="Chengdu 🏮"></option>
+            </datalist>
+          </div>
+
+          <div class="form-group">
+            <label for="target_region">Target Region</label>
+            <input
+              type="text"
+              id="target_region"
+              name="target_region"
+              list="targetRegionList"
+              placeholder="e.g., Guangxi ⛰️, Yunnan 🌲"
+              value="Guangxi ⛰️"
+              required
+            />
+            <datalist id="targetRegionList">
+              <option value="Guangxi ⛰️"></option>
+              <option value="Yunnan 🌲"></option>
+              <option value="Sichuan ⛰️"></option>
+              <option value="Xi'an 🏮"></option>
+              <option value="Jiangnan ⛩️"></option>
+            </datalist>
+          </div>
+
+          <div class="form-group">
+            <label for="travel_style">Travel Style</label>
+            <select id="travel_style" name="travel_style" required>
+              <option value="budget backpacker" selected>🎒 Budget Backpacker</option>
+              <option value="midrange leisure">🏨 Midrange Leisure</option>
+              <option value="culture-focused sightseeing">🏛️ Culture-focused Sightseeing</option>
+              <option value="food-oriented travel">🥟 Food-oriented Travel</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="budget_cny">Budget in CNY (¥)</label>
+            <input
+              type="number"
+              id="budget_cny"
+              name="budget_cny"
+              placeholder="e.g., 2500"
+              value="2500"
+              min="100"
+              step="50"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="total_days">Total Days</label>
+            <input
+              type="number"
+              id="total_days"
+              name="total_days"
+              list="daysList"
+              placeholder="3, 7, or 10"
+              value="3"
+              min="1"
+              max="30"
+              required
+            />
+            <datalist id="daysList">
+              <option value="3"></option>
+              <option value="7"></option>
+              <option value="10"></option>
+            </datalist>
+          </div>
+
+          <div class="form-group form-actions">
+            <button type="submit" id="submitBtn" class="btn-primary">
+              <span>Generate Routes</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Presets Directly Underneath Form Inputs -->
+        <div class="preset-bar">
+          <span class="preset-label">✨ Quick Presets:</span>
+          <div class="preset-pills">
+            <button type="button" class="pill-btn" data-preset="DEV-GX-01">
+              🎒 Shenzhen to Guangxi (3 Days • ¥2,500)
+            </button>
+            <button type="button" class="pill-btn" data-preset="DEV-YN-01">
+              🏛️ Guangzhou to Yunnan (7 Days • ¥6,500)
+            </button>
+            <button type="button" class="pill-btn" data-preset="DEV-SC-01">
+              🥟 Shanghai to Sichuan (7 Days • ¥7,000)
+            </button>
+            <button type="button" class="pill-btn" data-preset="DEV-YN-LOW">
+              ⚠️ Low-Budget Test (3 Days • ¥800)
+            </button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <!-- Prominent Red Validation Error Banner (Shown when valid = 0, while still rendering routes below!) -->
+    <section id="validationErrorBanner" class="validation-red-banner hidden" role="alert" aria-live="assertive">
+      <div class="validation-banner-icon" aria-hidden="true">🚨</div>
+      <div class="validation-banner-body">
+        <h3 id="validationBannerTitle">Itinerary Constraint Warning (valid = 0)</h3>
+        <p id="validationBannerText">budget too low, estimated minimum 1,150 CNY</p>
+      </div>
+    </section>
+
+    <!-- Network / Proxy Error Banner (With Instant Fallback Button) -->
+    <section id="errorBanner" class="error-banner hidden" role="alert" aria-live="assertive">
+      <div class="error-content">
+        <div class="error-icon" aria-hidden="true">⚠️</div>
+        <div class="error-text">
+          <h3 id="errorTitle">Unable to Reach Live Dify API</h3>
+          <p id="errorMessage">An unexpected error occurred while communicating with the Dify API.</p>
+        </div>
+      </div>
+      <div class="error-actions">
+        <button type="button" id="loadFallbackNowBtn" class="btn-error-retry">Load Saved Fallback Routes</button>
+        <button type="button" id="retryBtn" class="btn-error-dismiss">Retry Live API</button>
+        <button type="button" id="dismissErrorBtn" class="btn-error-dismiss">Dismiss</button>
+      </div>
+    </section>
+
+    <!-- Loading State (60–115s Progress Updates + 180s Timeout) -->
+    <section id="loadingSection" class="loading-section card-elevated hidden" aria-live="polite">
+      <div class="spinner"></div>
+      <div class="loading-meta">
+        <span id="loadingElapsedBadge" class="elapsed-badge">Elapsed: 0s (Typical run: 60–115s • Timeout: 180s)</span>
+      </div>
+      <h3 id="loadingStageTitle">Crafting Your Dual-Lens China Itineraries...</h3>
+      <p id="loadingProgressText" class="loading-progress-text">
+        Step 1/4: Validating corridor parameters and querying canonical transit table...
+      </p>
+      <div class="progress-track" aria-hidden="true">
+        <div id="loadingProgressBar" class="progress-fill"></div>
+      </div>
+      <div class="loading-fallback-hint">
+        <span>In a hurry during a demo?</span>
+        <button type="button" id="skipToSavedBtn" class="btn-link-fallback">
+          Skip wait &amp; load saved result immediately →
+        </button>
+      </div>
+    </section>
+
+    <!-- Traditional Gold Flourish Divider & Empty State / How It Works Section -->
+    <section id="howItWorksSection" class="how-it-works-section" aria-labelledby="how-heading">
+      <div class="gold-divider" aria-hidden="true">
+        <span class="divider-line"></span>
+        <span class="divider-knot">༺ ❖ ༻</span>
+        <span class="divider-line"></span>
+      </div>
+
+      <div class="how-header">
+        <span class="how-eyebrow">Dual-Lens Intelligence</span>
+        <h2 id="how-heading">❀ How It Works ❀</h2>
+        <p>Experience China through two complementary lenses powered by specialized AI travel agents.</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card card-elevated">
+          <div class="step-number">01</div>
+          <div class="step-icon" aria-hidden="true">🧭</div>
+          <h3>Enter Your Parameters</h3>
+          <p>Enter your parameters—choose your departure city, target region, travel style, budget in CNY, and trip duration.</p>
+        </div>
+
+        <div class="step-card card-elevated">
+          <div class="step-number">02</div>
+          <div class="step-icon" aria-hidden="true">🤖</div>
+          <h3>Dual-Agent Synthesis</h3>
+          <p>Our Dual-Agents scan Western guides and Chinese local platforms alongside verified high-speed rail and flight tables.</p>
+        </div>
+
+        <div class="step-card card-elevated">
+          <div class="step-number">03</div>
+          <div class="step-icon" aria-hidden="true">⚖️</div>
+          <h3>Side-by-Side Comparison</h3>
+          <p>Compare standard highlights vs. authentic hidden gems in parallel with transparent day-by-day cost breakdowns.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Output Section -->
+    <section id="outputSection" class="output-section hidden" aria-label="Generated Itineraries">
+      <div class="gold-divider" aria-hidden="true">
+        <span class="divider-line"></span>
+        <span class="divider-knot">❀ Dual-Lens Comparison ❀</span>
+        <span class="divider-line"></span>
+      </div>
+
+      <!-- Traveler Summary Banner -->
+      <div id="judgeBanner" class="judge-banner card-elevated hidden">
+        <div class="judge-badges">
+          <span id="validBadge" class="meta-badge badge-valid">✓ Verified Route Plan (valid = 1)</span>
+          <span id="scoreBadge" class="meta-badge badge-score">Style Match: 3 / 3</span>
+          <span id="sourceModeBadge" class="meta-badge badge-mode hidden">Saved Fallback</span>
+        </div>
+        <p id="judgeComment" class="judge-comment"></p>
+      </div>
+
+      <!-- Side-by-Side Comparison Columns (Flexbox Equal-Height + Independent Scroll) -->
+      <div class="comparison-grid">
+        <!-- Left Column: Standard Route (Global Explorer) -->
+        <article class="route-card card-elevated route-standard">
+          <div class="route-sticky-top">
+            <div class="route-header">
+              <div>
+                <span class="route-tag tag-standard">Lens 01 • Iconic Highlights</span>
+                <h2 id="standardTitle">Standard Route</h2>
+              </div>
+              <div class="cost-box">
+                <span class="cost-label">Estimated Total Cost</span>
+                <span id="standardCost" class="cost-value">¥ --</span>
+              </div>
+            </div>
+            <div id="standardBreakdown" class="cost-breakdown hidden"></div>
+          </div>
+          <div id="standardMarkdown" class="markdown-body"></div>
+        </article>
+
+        <!-- Right Column: Hidden Gem Route (Local Insider) -->
+        <article class="route-card card-elevated route-hidden-gem">
+          <div class="route-sticky-top">
+            <div class="route-header">
+              <div>
+                <span class="route-tag tag-gem">Lens 02 • Local Insider</span>
+                <h2 id="hiddenGemTitle">Hidden Gem Route</h2>
+              </div>
+              <div class="cost-box">
+                <span class="cost-label">Estimated Total Cost</span>
+                <span id="hiddenGemCost" class="cost-value">¥ --</span>
+              </div>
+            </div>
+            <div id="hiddenGemBreakdown" class="cost-breakdown hidden"></div>
+          </div>
+          <div id="hiddenGemMarkdown" class="markdown-body"></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-container">
+      <p class="footer-disclaimer"><strong>Estimates only, no booking</strong></p>
+      <p class="footer-sub">Powered by Dify &amp; Qwen Models | CUHK-Shenzhen Project Group 2</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

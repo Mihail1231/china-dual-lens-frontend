@@ -1,0 +1,5 @@
+# Ignore temporary inspection directory and local archives
+dify_inspect/
+*.zip
+.env
+.DS_Store
