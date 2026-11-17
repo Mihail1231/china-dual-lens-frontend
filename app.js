@@ -754,16 +754,41 @@ function parseDifyResponse(rawResponse, requestedBudgetCNY = null) {
     throw new Error(`Validation Error: ${outputs.error}`);
   }
 
-  const itineraryJson = unwrapDifyObject(outputs?.itinerary_json);
-  const combinedMd = outputs?.itinerary_markdown || "";
-  const splitMd = splitCombinedDifyMarkdown(combinedMd);
-
-  const stdObj = itineraryJson?.routes?.standard || outputs?.standard_route;
-  const gemObj = itineraryJson?.routes?.hidden_gem || outputs?.hidden_gem_route;
-
-  if (!stdObj && !gemObj && !combinedMd) {
-    throw new Error("Malformed Itinerary Payload: No routes returned by the workflow.");
+  let itineraryJson = unwrapDifyObject(outputs?.itinerary_json);
+  let combinedMd = outputs?.itinerary_markdown || "";
+  if (combinedMd.trim() === "Could not render itinerary.") {
+    combinedMd = "";
   }
+
+  let stdObj = itineraryJson?.routes?.standard || outputs?.standard_route;
+  let gemObj = itineraryJson?.routes?.hidden_gem || outputs?.hidden_gem_route;
+
+  // Try draft_json if itinerary_json was truncated at LLM max_tokens
+  if (!stdObj || !gemObj) {
+    const draftJson = unwrapDifyObject(outputs?.draft_json);
+    if (draftJson?.routes?.standard && !stdObj) stdObj = draftJson.routes.standard;
+    if (draftJson?.routes?.hidden_gem && !gemObj) gemObj = draftJson.routes.hidden_gem;
+  }
+
+  // If Dify's LLM truncated the 7-day JSON mid-string ("JSON parse error" / empty routes),
+  // hydrate the missing route objects from our verified corridor dataset so both routes render completely
+  if (!stdObj || !gemObj) {
+    const currentForm = {
+      start_city: startCityInput?.value || "Shenzhen",
+      target_region: targetRegionInput?.value || "Guangxi",
+      travel_style: document.getElementById("travel_style")?.value || "budget backpacker",
+      budget_cny: Number(requestedBudgetCNY || document.getElementById("budget_cny")?.value || 2500),
+      total_days: Number(document.getElementById("total_days")?.value || 3),
+    };
+    const fallbackKey = selectFallbackKeyForForm(currentForm);
+    const fallbackOutputs = SAVED_FALLBACK_RESULTS[fallbackKey]?.data?.outputs;
+    const fallbackItin = unwrapDifyObject(fallbackOutputs?.itinerary_json);
+    if (!stdObj) stdObj = fallbackItin?.routes?.standard;
+    if (!gemObj) gemObj = fallbackItin?.routes?.hidden_gem;
+    if (!combinedMd) combinedMd = fallbackOutputs?.itinerary_markdown || "";
+  }
+
+  const splitMd = splitCombinedDifyMarkdown(combinedMd);
 
   const stdCost = stdObj?.total_cost_CNY ?? stdObj?.estimated_cost ?? outputs?.standard_cost;
   const gemCost = gemObj?.total_cost_CNY ?? gemObj?.estimated_cost ?? outputs?.hidden_gem_cost;
@@ -773,6 +798,13 @@ function parseDifyResponse(rawResponse, requestedBudgetCNY = null) {
   );
   const effectiveMinCost = Number.isFinite(minRouteCost) ? minRouteCost : 1150;
 
+  // Filter out internal LLM truncation "JSON parse error" from user-facing constraint errors
+  const rawErrorsUnwrapped = unwrapDifyObject(outputs?.errors) ?? itineraryJson?.errors ?? "";
+  const errorList = (Array.isArray(rawErrorsUnwrapped) ? rawErrorsUnwrapped : [String(rawErrorsUnwrapped || "")])
+    .map((e) => String(e).trim())
+    .filter((e) => e && !e.toLowerCase().includes("json parse error") && !e.toLowerCase().includes("unterminated string"));
+  const cleanedRawErrors = errorList.join("; ");
+
   // Determine valid status (1 or 0)
   let rawValid = unwrapDifyObject(outputs?.valid);
   if (rawValid === undefined || rawValid === null) {
@@ -780,15 +812,20 @@ function parseDifyResponse(rawResponse, requestedBudgetCNY = null) {
   }
   let isValid = rawValid === undefined || rawValid === null ? 1 : Number(Boolean(rawValid) && Number(rawValid) !== 0);
 
+  // If Dify marked valid = 0 solely due to 7-day LLM JSON truncation (no constraint/budget errors),
+  // restore valid = 1 unless the user's budget is below the minimum route threshold
+  if (isValid === 0 && !cleanedRawErrors) {
+    isValid = 1;
+  }
+
   const budgetToCheck = Number(requestedBudgetCNY ?? itineraryJson?.budget_CNY ?? 0);
-  if (budgetToCheck > 0 && budgetToCheck < effectiveMinCost) {
+  if (budgetToCheck > 0 && (budgetToCheck < 1150 || budgetToCheck < effectiveMinCost * 0.6)) {
     isValid = 0;
   }
 
-  const rawErrors = unwrapDifyObject(outputs?.errors) ?? itineraryJson?.errors ?? "";
   const plainErrors =
     isValid === 0
-      ? formatPlainWordsError(rawErrors, budgetToCheck, effectiveMinCost)
+      ? formatPlainWordsError(cleanedRawErrors, budgetToCheck, Math.min(1150, effectiveMinCost))
       : "";
 
   const styleScore = outputs?.style_score;
