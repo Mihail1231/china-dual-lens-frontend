@@ -956,12 +956,11 @@ async function readDifyEventStream(response) {
       return;
     }
 
-    if (evt.event === "node_started" && evt.data?.title && loadingProgressText) {
+    if (evt.event === "node_started" && evt.data?.title) {
       hasLiveStreamProgress = true;
       completedNodes += 1;
       const pct = Math.min(94, 12 + completedNodes * 14);
       if (loadingProgressBar) loadingProgressBar.style.width = `${pct}%`;
-      loadingProgressText.textContent = `Live Dify Agent (Node ${completedNodes}): Executing "${evt.data.title}"...`;
     } else if (evt.event === "error") {
       throw new Error(evt.message || "Dify stream error");
     } else if (evt.event === "workflow_finished") {
@@ -1098,19 +1097,54 @@ async function callDifyWorkflow(formValues) {
 }
 
 // ============================================================================
-// 9. LOADING PROGRESS TIMER (60–115s Progress Stages)
+// 9. LOADING PROGRESS TIMER & CYCLING CHINA-TRAVEL MESSAGES (Every 3.5s)
 // ============================================================================
+const LOADING_MESSAGES = [
+  "Wandering the rice terraces...",
+  "Walking along the Yellow River...",
+  "Climbing Yunnan's highest peak...",
+  "Searching for the right level in cyberpunk Chongqing...",
+  "Bargaining at the night market...",
+  "Waiting for the high-speed rail...",
+  "Asking a local for hidden gems...",
+  "Consulting the ancient scrolls...",
+  "Dodging spicy hotpot splatters in Chengdu...",
+  "Befriending a giant panda for insider tips...",
+  "Drifting down the Li River on a bamboo raft...",
+];
+
 let loadingTimerInterval = null;
+let loadingMessageInterval = null;
+let loadingFadeTimeout = null;
 
 function startLoadingProgress() {
   let elapsedSec = 0;
+  let messageIndex = 0;
   hasLiveStreamProgress = false;
+
   loadingElapsedBadge.textContent = "Elapsed: 0s (Typical run: 60–115s • Timeout: 180s)";
   loadingProgressBar.style.width = "6%";
-  loadingProgressText.textContent =
-    "Step 1/4: Validating corridor parameters and querying canonical transit table...";
+
+  // Immediately show the first travel-themed message
+  loadingProgressText.classList.remove("fade-out");
+  loadingProgressText.textContent = LOADING_MESSAGES[0];
 
   clearInterval(loadingTimerInterval);
+  clearInterval(loadingMessageInterval);
+  clearTimeout(loadingFadeTimeout);
+
+  // Cycle through LOADING_MESSAGES every 3.5 seconds with smooth opacity fade
+  loadingMessageInterval = setInterval(() => {
+    loadingProgressText.classList.add("fade-out");
+    clearTimeout(loadingFadeTimeout);
+    loadingFadeTimeout = setTimeout(() => {
+      messageIndex = (messageIndex + 1) % LOADING_MESSAGES.length;
+      loadingProgressText.textContent = LOADING_MESSAGES[messageIndex];
+      loadingProgressText.classList.remove("fade-out");
+    }, 480);
+  }, 3500);
+
+  // Update elapsed seconds counter and progress bar width
   loadingTimerInterval = setInterval(() => {
     elapsedSec += 1;
     loadingElapsedBadge.textContent = `Elapsed: ${elapsedSec}s (Typical run: 60–115s • Timeout: 180s)`;
@@ -1118,27 +1152,20 @@ function startLoadingProgress() {
     if (!hasLiveStreamProgress) {
       const pct = Math.min(95, Math.round((elapsedSec / 105) * 100));
       loadingProgressBar.style.width = `${Math.max(6, pct)}%`;
-
-      if (elapsedSec < 18) {
-        loadingProgressText.textContent =
-          "Step 1/4: Validating corridor parameters and querying canonical transit table...";
-      } else if (elapsedSec < 50) {
-        loadingProgressText.textContent =
-          "Step 2/4: Global Explorer scanning English guides (Tavily) & Local Insider retrieving Dify Knowledge Base...";
-      } else if (elapsedSec < 85) {
-        loadingProgressText.textContent =
-          "Step 3/4: Synthesizer merging Standard & Hidden Gem routes and verifying transport legs...";
-      } else {
-        loadingProgressText.textContent =
-          "Step 4/4: Judge scoring itinerary style match and checking CNY budget compliance (almost done)...";
-      }
     }
   }, 1000);
 }
 
 function stopLoadingProgress() {
+  clearInterval(loadingMessageInterval);
   clearInterval(loadingTimerInterval);
+  clearTimeout(loadingFadeTimeout);
+  loadingMessageInterval = null;
   loadingTimerInterval = null;
+  loadingFadeTimeout = null;
+  if (loadingProgressText) {
+    loadingProgressText.classList.remove("fade-out");
+  }
 }
 
 // ============================================================================

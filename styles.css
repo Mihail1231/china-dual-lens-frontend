@@ -628,10 +628,17 @@ body {
 
 .loading-progress-text {
   max-width: 580px;
-  margin: 0.35rem auto 1rem;
-  font-size: 0.93rem;
-  font-weight: 500;
-  color: #57534e;
+  min-height: 1.6em;
+  margin: 0.45rem auto 1rem;
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: #5c0a0a;
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+
+.loading-progress-text.fade-out {
+  opacity: 0;
 }
 
 .progress-track {
