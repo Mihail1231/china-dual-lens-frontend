@@ -817,8 +817,66 @@ function parseDifyResponse(rawResponse, requestedBudgetCNY = null) {
 }
 
 // ============================================================================
-// 8. CALL DIFY WORKFLOW API (Via Serverless Proxy with Direct Fallback & 180s Timeout)
+// 8. CALL DIFY WORKFLOW API (Via Serverless Proxy with SSE Streaming & 180s Timeout)
+// Uses "streaming" mode so Cloudflare in front of api.dify.ai never triggers a
+// 504 Gateway Timeout during 100–130s multi-agent workflow executions.
 // ============================================================================
+async function readDifyEventStream(response) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalResult = null;
+
+  function processLine(line) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("data:")) return;
+    const jsonStr = trimmed.slice(5).trim();
+    if (!jsonStr) return;
+
+    let evt;
+    try {
+      evt = JSON.parse(jsonStr);
+    } catch {
+      return;
+    }
+
+    if (evt.event === "node_started" && evt.data?.title && loadingProgressText) {
+      loadingProgressText.textContent = `Live Dify Agent: Executing "${evt.data.title}"...`;
+    } else if (evt.event === "error") {
+      throw new Error(evt.message || "Dify stream error");
+    } else if (evt.event === "workflow_finished") {
+      if (evt.data?.status === "failed" || evt.data?.error) {
+        throw new Error(`Dify Workflow Failed: ${evt.data.error || "Unknown workflow error"}`);
+      }
+      finalResult = evt;
+    }
+  }
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      buffer += decoder.decode();
+      if (buffer.trim()) {
+        for (const l of buffer.split("\n")) {
+          processLine(l);
+        }
+      }
+      break;
+    }
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      processLine(line);
+    }
+  }
+
+  if (!finalResult) {
+    throw new Error("Stream ended before workflow_finished event was received from Dify.");
+  }
+  return finalResult;
+}
+
 async function sendWorkflowFetch(endpointUrl, payload) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -830,7 +888,10 @@ async function sendWorkflowFetch(endpointUrl, payload) {
   }
 
   try {
-    const headers = { "Content-Type": "application/json" };
+    const headers = {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream, application/json",
+    };
     if (BEARER_TOKEN && BEARER_TOKEN !== "YOUR_DIFY_BEARER_TOKEN_HERE") {
       headers.Authorization = `Bearer ${BEARER_TOKEN}`;
     }
@@ -845,6 +906,11 @@ async function sendWorkflowFetch(endpointUrl, payload) {
     if (!response.ok) {
       const errText = await response.text();
       throw new Error(`HTTP ${response.status}: ${errText || response.statusText}`);
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("text/event-stream") && response.body) {
+      return await readDifyEventStream(response);
     }
 
     const json = await response.json();
@@ -876,7 +942,7 @@ async function callDifyWorkflow(formValues) {
     formValues.budget_cny
   );
 
-  // Exact 7 inputs required by Dify Core API
+  // Exact 7 inputs required by Dify Core API, using "streaming" mode to prevent Cloudflare 504 timeouts
   const payload = {
     inputs: {
       profile_id: profileId,
@@ -887,7 +953,7 @@ async function callDifyWorkflow(formValues) {
       total_days: String(formValues.total_days),
       corridor_tag: corridorTag,
     },
-    response_mode: "blocking",
+    response_mode: "streaming",
     user: "frontend-user-id",
   };
 
@@ -1087,6 +1153,9 @@ function loadSpecificSavedPreset(profileKey) {
 // ============================================================================
 function summarizeApiError(rawMsg) {
   const msg = String(rawMsg || "Unknown error");
+  if (msg.includes("504") || msg.includes("Gateway time-out") || msg.includes("<!DOCTYPE html>")) {
+    return "Dify Cloud gateway timed out (HTTP 504)";
+  }
   if (msg.includes("Key is blocked") || msg.includes("401")) {
     return "Upstream LLM model key in Dify is currently blocked/expired (HTTP 401)";
   }

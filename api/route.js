@@ -2,9 +2,10 @@
  * Vercel Serverless Function: api/route.js
  * Endpoint: POST /api/route
  *
- * Reads process.env.DIFY_API_KEY on the server and forwards requests to:
+ * Uses Dify's "streaming" response_mode (Server-Sent Events) when calling
  *   POST https://api.dify.ai/v1/workflows/run
- * Prevents browser CORS issues and keeps the Dify API key off the client.
+ * so Cloudflare in front of api.dify.ai never drops 100–130s workflow runs
+ * with a 504 Gateway Timeout.
  */
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -38,28 +39,70 @@ module.exports = async function handler(req, res) {
     const bodyPayload =
       typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
 
+    // Always use "streaming" with api.dify.ai to avoid Cloudflare 504 timeouts after ~100-120s
+    const upstreamPayload = {
+      ...bodyPayload,
+      response_mode: "streaming",
+    };
+
     const difyRes = await fetch(difyUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Accept: "text/event-stream, application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(bodyPayload),
+      body: JSON.stringify(upstreamPayload),
       signal: controller.signal,
     });
 
-    const text = await difyRes.text();
-    return res
-      .status(difyRes.status)
-      .setHeader("Content-Type", "application/json")
-      .send(text);
+    const contentType = difyRes.headers.get("content-type") || "";
+
+    if (!difyRes.ok || !contentType.includes("text/event-stream")) {
+      const text = await difyRes.text();
+      return res
+        .status(difyRes.status)
+        .setHeader("Content-Type", contentType || "application/json")
+        .send(text);
+    }
+
+    // Stream SSE events directly back to the browser
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+    });
+
+    const reader = difyRes.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunkText = decoder.decode(value, { stream: true });
+      res.write(chunkText);
+    }
+
+    return res.end();
   } catch (err) {
     const isAbort = err && err.name === "AbortError";
-    return res.status(isAbort ? 504 : 500).json({
-      error: isAbort
-        ? "Gateway Timeout: Dify workflow exceeded 180 seconds."
-        : `Proxy Error: ${err.message}`,
-    });
+    if (!res.headersSent) {
+      return res.status(isAbort ? 504 : 500).json({
+        error: isAbort
+          ? "Gateway Timeout: Dify workflow exceeded 180 seconds."
+          : `Proxy Error: ${err.message}`,
+      });
+    }
+    res.write(
+      `data: ${JSON.stringify({
+        event: "error",
+        message: isAbort
+          ? "Gateway Timeout: Dify workflow exceeded 180 seconds."
+          : `Proxy Error: ${err.message}`,
+      })}\n\n`
+    );
+    return res.end();
   } finally {
     clearTimeout(timeoutId);
   }
