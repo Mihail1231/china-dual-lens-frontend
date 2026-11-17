@@ -993,21 +993,21 @@ body::after {
   border-bottom-style: solid;
 }
 
-/* Shan Shui (Ink Wash) Mountain Landscape Anchor (Fixed to Viewport Bottom) */
+/* Shan Shui (Ink Wash) Mountain Landscape Anchor (Planted at Bottom of Page Above Footer) */
 .mountain-anchor,
 .shanshui-anchor {
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 35vh;
+  height: 280px;
   background-image:
     url('mountains-anchor.png'),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 320' preserveAspectRatio='none'%3E%3Cpath d='M0 320 L0 190 C 140 130, 260 95, 410 165 C 560 235, 710 70, 910 140 C 1110 210, 1290 85, 1460 150 L 1600 185 L 1600 320 Z' fill='%238c7a6b' fill-opacity='0.35'/%3E%3Cpath d='M0 320 L0 225 C 190 165, 340 120, 530 195 C 720 270, 890 125, 1120 185 C 1310 235, 1450 140, 1600 205 L 1600 320 Z' fill='%235c0a0a' fill-opacity='0.26'/%3E%3Cpath d='M0 320 L0 255 C 240 210, 480 235, 760 195 C 1040 155, 1320 225, 1600 240 L 1600 320 Z' fill='%2344403c' fill-opacity='0.42'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: bottom center;
   background-size: cover;
-  opacity: 0.25;
+  opacity: 0.28;
   mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
   -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
   pointer-events: none;
