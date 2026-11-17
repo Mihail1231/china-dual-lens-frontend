@@ -32,11 +32,13 @@ html {
   padding: 0;
   width: 100%;
   min-height: 100vh;
+  background-color: #fcf9f2;
+  overflow-x: hidden;
 }
 
 /* Chinese-Themed Traditional Background Pattern */
 body {
-  background-color: #fcf9f2;
+  background-color: transparent;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M40 0l40 40-40 40L0 40z' fill='none' stroke='%23e6d8b8' stroke-width='0.5' stroke-opacity='0.4'/%3E%3Ccircle cx='40' cy='40' r='6' fill='none' stroke='%23e6d8b8' stroke-width='0.5' stroke-opacity='0.4'/%3E%3Cpath d='M0 0h80v80H0z' fill='none' stroke='%23ebdcb9' stroke-width='0.25' stroke-opacity='0.3'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-attachment: fixed;
@@ -49,17 +51,48 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow-x: hidden;
 }
 
-/* 1. Dynamic Drifting Auspicious Clouds (祥云) — body::before */
+/* 1. Minimalist Dragon Watermark — body::before */
 body::before {
+  content: "";
+  filter: none;
+  background-image: url('minimalist-dragon-outline.svg');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: contain;
+  width: 80%;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 10%;
+  opacity: 0.03;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: -2;
+  animation: dragonFly 30s ease-in-out infinite alternate;
+}
+
+@keyframes dragonFly {
+  0% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translate(-20px, 15px) scale(1.02) rotate(1deg);
+  }
+  100% {
+    transform: translate(20px, -15px) scale(1) rotate(-1deg);
+  }
+}
+
+/* 2. Dynamic Drifting Auspicious Clouds (祥云) — body::after */
+body::after {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
-  opacity: 0.15;
+  z-index: -2;
+  opacity: 0.14;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='180' viewBox='0 0 360 180'%3E%3Cg fill='none' stroke='%23c89d3c' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M40 70c12-18 38-18 50 0 10-12 28-10 36 4 14-4 26 8 22 22H28c-12-8-6-26 12-26z'/%3E%3Cpath d='M62 68c8-8 22-6 26 4c-6 6-16 6-22 0'/%3E%3Cpath d='M210 135c14-20 42-20 56 0 12-12 30-10 38 5 14-4 26 8 22 22H196c-12-8-6-27 14-27z'/%3E%3Cpath d='M235 133c9-8 23-6 27 4c-6 6-16 6-22 0'/%3E%3C/g%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 360px 180px;
@@ -72,37 +105,6 @@ body::before {
   }
   100% {
     background-position-x: 100%;
-  }
-}
-
-/* 2. The Dragon Watermark ("Flying" Animation & Detail Enhancement) — body::after */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.06;
-  mix-blend-mode: multiply;
-  background-image:
-    url('dragon-watermark.png'),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1400 600'%3E%3Cg fill='none' stroke='%234a0808' stroke-linecap='round' stroke-linejoin='round'%3E%3C!-- Main sinuous dragon body --%3E%3Cpath d='M90 360 C 210 140, 390 130, 540 290 C 690 450, 870 430, 1020 240 C 1110 125, 1210 145, 1275 225' stroke-width='20'/%3E%3Cpath d='M90 360 C 210 140, 390 130, 540 290 C 690 450, 870 430, 1020 240 C 1110 125, 1210 145, 1275 225' stroke='%238b1111' stroke-width='8' stroke-dasharray='4 14'/%3E%3C!-- Dorsal spine fins along the body --%3E%3Cpath d='M150 265 l-15-28 l26 12 l-8-30 l26 16 l-4-28 l24 18 M260 180 l-6-30 l22 18 l4-30 l18 22 l10-28 l14 25 M430 205 l14-26 l10 26 l20-20 l4 28 M640 365 l-12 28 l24-16 l-6 30 l24-18 M810 385 l10 28 l14-25 l16 24 l10-28 M970 285 l-18-24 l26 8 l-10-28 l26 14 M1120 160 l-8-28 l22 16 l4-28 l18 22' stroke-width='4.5'/%3E%3C!-- Imperial Dragon Head, Horns & Flowing Whiskers --%3E%3Cpath d='M1245 190 C 1270 155, 1325 155, 1350 185 C 1320 195, 1310 210, 1345 230 C 1310 245, 1275 245, 1250 225 Z' fill='%234a0808' stroke-width='5'/%3E%3Cpath d='M1255 175 C 1225 115, 1170 95, 1125 115 M1240 182 C 1205 135, 1165 125, 1135 140' stroke-width='6'/%3E%3Cpath d='M1335 182 C 1375 150, 1395 185, 1365 215 C 1390 235, 1370 275, 1330 255' stroke-width='4'/%3E%3C!-- Flaming Pearl of Wisdom --%3E%3Ccircle cx='1355' cy='305' r='22' stroke-width='5'/%3E%3Cpath d='M1335 280 Q1355 245 1375 280 M1345 272 Q1355 252 1365 272' stroke-width='3.5'/%3E%3C!-- Four Eagle-Clawed Limbs --%3E%3Cpath d='M330 185 L 285 265 L 255 255 M285 265 L 270 288 M285 265 L 302 285' stroke-width='7'/%3E%3Cpath d='M610 345 L 565 435 L 535 425 M565 435 L 550 458 M565 435 L 585 455' stroke-width='7'/%3E%3Cpath d='M910 340 L 955 425 L 985 415 M955 425 L 970 448 M955 425 L 938 445' stroke-width='7'/%3E%3Cpath d='M1175 165 L 1205 255 L 1235 248 M1205 255 L 1218 278 M1205 255 L 1188 276' stroke-width='7'/%3E%3C!-- Ornate Tail Plume --%3E%3Cpath d='M90 360 C 55 395, 30 375, 20 335 C 45 350, 65 340, 90 360 M90 360 C 50 415, 25 415, 15 385' stroke-width='6'/%3E%3C/g%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: center 52%;
-  background-size: min(1220px, 90vw) auto;
-  filter: contrast(150%) brightness(90%) drop-shadow(0px 10px 10px rgba(0, 0, 0, 0.1));
-  animation: dragonFly 25s ease-in-out infinite alternate;
-}
-
-@keyframes dragonFly {
-  0% {
-    transform: translate(0, 0) scale(1) rotate(0deg);
-  }
-  50% {
-    transform: translate(-20px, 15px) scale(1.02) rotate(1deg);
-  }
-  100% {
-    transform: translate(20px, -15px) scale(1) rotate(-1deg);
   }
 }
 
@@ -991,25 +993,25 @@ body::after {
   border-bottom-style: solid;
 }
 
-/* Shan Shui (Ink Wash) Mountain Landscape Anchor (Fixed Bottom, Smooth Non-Tiling Cover + Top Mask Fade) */
+/* Shan Shui (Ink Wash) Mountain Landscape Anchor (Fixed to Viewport Bottom) */
 .mountain-anchor,
 .shanshui-anchor {
   position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 300px;
+  height: 35vh;
   background-image:
     url('mountains-anchor.png'),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 320' preserveAspectRatio='none'%3E%3Cpath d='M0 320 L0 190 C 140 130, 260 95, 410 165 C 560 235, 710 70, 910 140 C 1110 210, 1290 85, 1460 150 L 1600 185 L 1600 320 Z' fill='%238c7a6b' fill-opacity='0.35'/%3E%3Cpath d='M0 320 L0 225 C 190 165, 340 120, 530 195 C 720 270, 890 125, 1120 185 C 1310 235, 1450 140, 1600 205 L 1600 320 Z' fill='%235c0a0a' fill-opacity='0.26'/%3E%3Cpath d='M0 320 L0 255 C 240 210, 480 235, 760 195 C 1040 155, 1320 225, 1600 240 L 1600 320 Z' fill='%2344403c' fill-opacity='0.42'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: bottom center;
   background-size: cover;
-  opacity: 0.3;
+  opacity: 0.25;
   mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
   -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
 }
 
 /* Footer ("Estimates only, no booking") */

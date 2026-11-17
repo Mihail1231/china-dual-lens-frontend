@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" fill="none">
+  <!-- Clean, continuous minimalist calligraphic ribbon-stroke Chinese dragon -->
+  <g stroke="#5c0a0a" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Main ribbon curve -->
+    <path
+      d="M 110 310 C 220 150, 380 150, 520 270 C 660 390, 820 390, 950 240 C 1020 160, 1090 165, 1135 215"
+      stroke-width="6"
+    />
+    <!-- Parallel minimalist inner contour -->
+    <path
+      d="M 135 322 C 235 175, 380 175, 515 288 C 650 400, 810 400, 940 258 C 1005 185, 1068 188, 1110 228"
+      stroke-width="2.5"
+      stroke-opacity="0.7"
+    />
+    <!-- Minimalist Dragon Head & Antler Line -->
+    <path
+      d="M 1115 195 C 1140 172, 1175 178, 1188 202 C 1162 208, 1152 218, 1178 234 C 1150 242, 1122 235, 1110 218"
+      stroke-width="4.5"
+    />
+    <path
+      d="M 1122 186 C 1095 142, 1052 132, 1015 148"
+      stroke-width="3.5"
+    />
+    <!-- Flowing Whisker -->
+    <path
+      d="M 1178 202 C 1198 185, 1205 215, 1185 245"
+      stroke-width="2.5"
+    />
+    <!-- Minimalist Pearl Circle -->
+    <circle cx="1165" cy="285" r="14" stroke-width="3" />
+    <!-- Simple Tail Taper -->
+    <path
+      d="M 110 310 C 78 338, 52 328, 42 298"
+      stroke-width="4"
+    />
+  </g>
+</svg>
