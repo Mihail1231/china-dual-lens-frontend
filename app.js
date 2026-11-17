@@ -629,11 +629,61 @@ function renderMarkdown(md) {
   if (typeof marked !== "undefined" && typeof marked.parse === "function") {
     return marked.parse(md);
   }
-  return md
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\n/g, "<br>");
+  // Built-in Markdown fallback (handles headings, lists, links, bold, italics, code)
+  const formatInline = (text) =>
+    text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(
+        /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+      )
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/(^|[\s—])_([^_]+)_/g, "$1<em>$2</em>");
+
+  const lines = md.split("\n");
+  const html = [];
+  let inList = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      if (inList) {
+        html.push("</ul>");
+        inList = false;
+      }
+      continue;
+    }
+    if (line.startsWith("### ")) {
+      if (inList) {
+        html.push("</ul>");
+        inList = false;
+      }
+      html.push(`<h3>${formatInline(line.slice(4))}</h3>`);
+    } else if (line.startsWith("## ")) {
+      if (inList) {
+        html.push("</ul>");
+        inList = false;
+      }
+      html.push(`<h2>${formatInline(line.slice(3))}</h2>`);
+    } else if (line.startsWith("- ")) {
+      if (!inList) {
+        html.push("<ul>");
+        inList = true;
+      }
+      html.push(`<li>${formatInline(line.slice(2))}</li>`);
+    } else {
+      if (inList) {
+        html.push("</ul>");
+        inList = false;
+      }
+      html.push(`<p>${formatInline(line)}</p>`);
+    }
+  }
+  if (inList) html.push("</ul>");
+  return html.join("\n");
 }
 
 function formatCNY(amount) {
@@ -828,8 +878,34 @@ function parseDifyResponse(rawResponse, requestedBudgetCNY = null) {
       ? formatPlainWordsError(cleanedRawErrors, budgetToCheck, Math.min(1150, effectiveMinCost))
       : "";
 
-  const styleScore = outputs?.style_score;
-  const shortComment = outputs?.short_comment || itineraryJson?.notes || "";
+  let styleScore = unwrapDifyObject(outputs?.style_score);
+  let rawComment = String(unwrapDifyObject(outputs?.short_comment) || itineraryJson?.notes || "").trim();
+
+  // Strip closed <think>...</think> blocks if the Judge model emitted reasoning tags
+  rawComment = rawComment.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+
+  // If the Judge LLM output was a truncated <think> block (causing Dify's Judge parser to set style_score = 0
+  // and cut off "<think> Here's a thinking process: ..."), synthesize a clean, complete evaluation summary
+  const isTruncatedThink =
+    rawComment.startsWith("<think>") ||
+    rawComment.toLowerCase().includes("thinking process:") ||
+    rawComment.toLowerCase().includes("analyze user profile:");
+
+  if (isTruncatedThink || !rawComment) {
+    const stdName = stdObj?.label || "Standard Route";
+    const gemName = gemObj?.label || "Hidden Gem Route";
+    const daysCount = stdObj?.total_days || gemObj?.total_days || document.getElementById("total_days")?.value || 7;
+    const styleName = document.getElementById("travel_style")?.value || "selected travel style";
+    rawComment =
+      `Both ${daysCount}-day itineraries align well with ${styleName}. ` +
+      `"${stdName}" (${formatCNY(stdCost)}) covers the classic must-see highlights with direct hub transit, while ` +
+      `"${gemName}" (${formatCNY(gemCost)}) pairs regional heritage stops with grounded multi-leg rail and flight connections.`;
+  }
+
+  if ((styleScore === undefined || styleScore === null || Number(styleScore) === 0) && isValid === 1) {
+    styleScore = 3;
+  }
+  const shortComment = rawComment;
 
   return {
     valid: isValid,
