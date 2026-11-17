@@ -821,11 +821,14 @@ function parseDifyResponse(rawResponse, requestedBudgetCNY = null) {
 // Uses "streaming" mode so Cloudflare in front of api.dify.ai never triggers a
 // 504 Gateway Timeout during 100–130s multi-agent workflow executions.
 // ============================================================================
+let hasLiveStreamProgress = false;
+
 async function readDifyEventStream(response) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let finalResult = null;
+  let completedNodes = 0;
 
   function processLine(line) {
     const trimmed = line.trim();
@@ -841,7 +844,11 @@ async function readDifyEventStream(response) {
     }
 
     if (evt.event === "node_started" && evt.data?.title && loadingProgressText) {
-      loadingProgressText.textContent = `Live Dify Agent: Executing "${evt.data.title}"...`;
+      hasLiveStreamProgress = true;
+      completedNodes += 1;
+      const pct = Math.min(94, 12 + completedNodes * 14);
+      if (loadingProgressBar) loadingProgressBar.style.width = `${pct}%`;
+      loadingProgressText.textContent = `Live Dify Agent (Node ${completedNodes}): Executing "${evt.data.title}"...`;
     } else if (evt.event === "error") {
       throw new Error(evt.message || "Dify stream error");
     } else if (evt.event === "workflow_finished") {
@@ -868,6 +875,22 @@ async function readDifyEventStream(response) {
     buffer = lines.pop() || "";
     for (const line of lines) {
       processLine(line);
+      if (finalResult) {
+        try {
+          await reader.cancel();
+        } catch {}
+        return finalResult;
+      }
+    }
+    // Also check if buffer itself holds a complete workflow_finished JSON line without trailing newline
+    if (buffer.includes('"workflow_finished"') && buffer.trim().endsWith("}")) {
+      processLine(buffer);
+      if (finalResult) {
+        try {
+          await reader.cancel();
+        } catch {}
+        return finalResult;
+      }
     }
   }
 
@@ -968,6 +991,7 @@ let loadingTimerInterval = null;
 
 function startLoadingProgress() {
   let elapsedSec = 0;
+  hasLiveStreamProgress = false;
   loadingElapsedBadge.textContent = "Elapsed: 0s (Typical run: 60–115s • Timeout: 180s)";
   loadingProgressBar.style.width = "6%";
   loadingProgressText.textContent =
@@ -978,21 +1002,23 @@ function startLoadingProgress() {
     elapsedSec += 1;
     loadingElapsedBadge.textContent = `Elapsed: ${elapsedSec}s (Typical run: 60–115s • Timeout: 180s)`;
 
-    const pct = Math.min(95, Math.round((elapsedSec / 105) * 100));
-    loadingProgressBar.style.width = `${Math.max(6, pct)}%`;
+    if (!hasLiveStreamProgress) {
+      const pct = Math.min(95, Math.round((elapsedSec / 105) * 100));
+      loadingProgressBar.style.width = `${Math.max(6, pct)}%`;
 
-    if (elapsedSec < 18) {
-      loadingProgressText.textContent =
-        "Step 1/4: Validating corridor parameters and querying canonical transit table...";
-    } else if (elapsedSec < 50) {
-      loadingProgressText.textContent =
-        "Step 2/4: Global Explorer scanning English guides (Tavily) & Local Insider retrieving Dify Knowledge Base...";
-    } else if (elapsedSec < 85) {
-      loadingProgressText.textContent =
-        "Step 3/4: Synthesizer merging Standard & Hidden Gem routes and verifying transport legs...";
-    } else {
-      loadingProgressText.textContent =
-        "Step 4/4: Judge scoring itinerary style match and checking CNY budget compliance (almost done)...";
+      if (elapsedSec < 18) {
+        loadingProgressText.textContent =
+          "Step 1/4: Validating corridor parameters and querying canonical transit table...";
+      } else if (elapsedSec < 50) {
+        loadingProgressText.textContent =
+          "Step 2/4: Global Explorer scanning English guides (Tavily) & Local Insider retrieving Dify Knowledge Base...";
+      } else if (elapsedSec < 85) {
+        loadingProgressText.textContent =
+          "Step 3/4: Synthesizer merging Standard & Hidden Gem routes and verifying transport legs...";
+      } else {
+        loadingProgressText.textContent =
+          "Step 4/4: Judge scoring itinerary style match and checking CNY budget compliance (almost done)...";
+      }
     }
   }, 1000);
 }
